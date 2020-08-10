@@ -166,7 +166,7 @@ var ProjectInput = /** @class */ (function (_super) {
         if (!validate(titleValidatable) ||
             !validate(descriptionValidatable) ||
             !validate(peopleValidatable)) {
-            console.log('Invalid Properties Specified');
+            alert('Invalid Properties Specified');
             return;
         }
         else {

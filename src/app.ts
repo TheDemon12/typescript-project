@@ -227,7 +227,7 @@ class ProjectInput extends ProjectElement<HTMLDivElement, HTMLFormElement> {
 			!validate(descriptionValidatable) ||
 			!validate(peopleValidatable)
 		) {
-			console.log('Invalid Properties Specified');
+			alert('Invalid Properties Specified');
 			return;
 		} else {
 			return [titleValue, descriptionValue, +peopleValue];
