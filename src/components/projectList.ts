@@ -1,8 +1,8 @@
-import { DragTarget } from '../models/drag-drop.js';
-import ProjectElement from '../models/projectElement.js';
-import { Project, ProjectStatus } from '../models/project.js';
-import { ProjectItem } from '../components/projectItem.js';
-import store from '../state/state.js';
+import { DragTarget } from '../models/drag-drop';
+import ProjectElement from '../models/projectElement';
+import { Project, ProjectStatus } from '../models/project';
+import { ProjectItem } from '../components/projectItem';
+import store from '../state/state';
 
 export class ProjectList extends ProjectElement<HTMLDivElement, HTMLElement>
 	implements DragTarget {

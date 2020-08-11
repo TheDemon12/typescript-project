@@ -1,6 +1,6 @@
-import ProjectElement from '../models/projectElement.js';
-import store from '../state/state.js';
-import validate from '../utils/validate.js';
+import ProjectElement from '../models/projectElement';
+import store from '../state/state';
+import validate from '../utils/validate';
 
 export class ProjectInput extends ProjectElement<
 	HTMLDivElement,
