@@ -1,57 +1,47 @@
 "use strict";
-var __extends = (this && this.__extends) || (function () {
-    var extendStatics = function (d, b) {
-        extendStatics = Object.setPrototypeOf ||
-            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
-        return extendStatics(d, b);
-    };
-    return function (d, b) {
-        extendStatics(d, b);
-        function __() { this.constructor = d; }
-        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-    };
-})();
 var ProjectStatus;
 (function (ProjectStatus) {
     ProjectStatus[ProjectStatus["activeProjects"] = 0] = "activeProjects";
     ProjectStatus[ProjectStatus["finishedProjects"] = 1] = "finishedProjects";
 })(ProjectStatus || (ProjectStatus = {}));
-var Project = /** @class */ (function () {
-    function Project(id, title, description, people, status) {
+class Project {
+    constructor(id, title, description, people, status) {
         this.id = id;
         this.title = title;
         this.description = description;
         this.people = people;
         this.status = status;
     }
-    return Project;
-}());
-var ProjectState = /** @class */ (function () {
-    function ProjectState() {
+}
+class ProjectState {
+    constructor() {
         this.projects = [];
         this.listeners = [];
     }
-    ProjectState.prototype.callListeners = function () {
-        var _this = this;
-        this.listeners.forEach(function (listener) { return listener(_this.projects.slice()); });
-    };
-    ProjectState.prototype.addListeners = function (listener) {
+    callListeners() {
+        this.listeners.forEach(listener => listener(this.projects.slice()));
+    }
+    addListeners(listener) {
         this.listeners.push(listener);
-    };
-    ProjectState.prototype.addProject = function (title, description, people) {
-        var newProject = new Project(Math.random.toString(), title, description, people, ProjectStatus.activeProjects);
+    }
+    addProject(title, description, people) {
+        const newProject = new Project(Math.random().toString(), title, description, people, ProjectStatus.activeProjects);
         this.projects.push(newProject);
         this.callListeners();
-    };
-    ProjectState.prototype.getProjects = function () {
-        return this.projects;
-    };
-    return ProjectState;
-}());
-var store = new ProjectState();
+    }
+    moveProject(projectId, projectStatus) {
+        const project = this.projects.find(project => project.id === projectId);
+        if (project) {
+            if (project.status !== projectStatus) {
+                project.status = projectStatus;
+                this.callListeners();
+            }
+        }
+    }
+}
+const store = new ProjectState();
 function validate(config) {
-    var isValid = true;
+    let isValid = true;
     if (config.required && config.value.toString().trim().length === 0)
         isValid = false;
     if (config.minLength &&
@@ -70,95 +60,125 @@ function validate(config) {
         isValid = false;
     return isValid;
 }
-var ProjectElement = /** @class */ (function () {
-    function ProjectElement(templateId, hostElementId, insertAtStart, newElementId) {
+class ProjectElement {
+    constructor(templateId, hostElementId, insertAtStart, newElementId) {
         this.templateElement = document.getElementById(templateId);
         this.hostElement = document.getElementById(hostElementId);
-        var importedNode = document.importNode(this.templateElement.content, true);
+        const importedNode = document.importNode(this.templateElement.content, true);
         this.element = importedNode.firstElementChild;
         if (newElementId) {
             this.element.id = newElementId;
         }
         this.attach(insertAtStart);
     }
-    ProjectElement.prototype.attach = function (insertAtStart) {
+    attach(insertAtStart) {
         this.hostElement.insertAdjacentElement(insertAtStart ? 'afterbegin' : 'beforeend', this.element);
-    };
-    return ProjectElement;
-}());
-var ProjectList = /** @class */ (function (_super) {
-    __extends(ProjectList, _super);
-    function ProjectList(type) {
-        var _this = _super.call(this, 'project-list', 'app', false, type + "-projects") || this;
-        _this.type = type;
-        _this.assignedProjects = [];
-        _this.configure();
-        _this.renderContent();
-        return _this;
     }
-    ProjectList.prototype.configure = function () {
-        var _this = this;
-        store.addListeners(function (projects) {
-            var relevantProjects = projects.filter(function (project) {
-                if (_this.type === 'active')
+}
+class ProjectItem extends ProjectElement {
+    constructor(hostId, pr) {
+        super('single-project', hostId, false, pr.id);
+        this.project = pr;
+        this.renderContent();
+        this.element.addEventListener('dragstart', this.dragStartHandler.bind(this));
+        this.element.addEventListener('dragend', this.dragEndHandler.bind(this));
+    }
+    get persons() {
+        return `${this.project.people} person${this.project.people > 1 ? 's' : ''} assigned`;
+    }
+    dragStartHandler(event) {
+        event.dataTransfer.setData('text/plain', this.project.id);
+        event.dataTransfer.effectAllowed = 'move';
+    }
+    dragEndHandler(_event) {
+        // console.log('dragEnd');
+    }
+    renderContent() {
+        this.element.querySelector('h2').textContent = this.project.title;
+        this.element.querySelector('h3').textContent = this.persons;
+        this.element.querySelector('p').textContent = this.project.description;
+    }
+}
+class ProjectList extends ProjectElement {
+    constructor(type) {
+        super('project-list', 'app', false, `${type}-projects`);
+        this.type = type;
+        this.assignedProjects = [];
+        this.renderContent();
+        this.configure();
+    }
+    configure() {
+        store.addListeners((projects) => {
+            const relevantProjects = projects.filter(project => {
+                if (this.type === 'active')
                     return project.status === ProjectStatus.activeProjects;
                 return project.status === ProjectStatus.finishedProjects;
             });
-            _this.assignedProjects = relevantProjects;
-            _this.renderProjects();
+            this.assignedProjects = relevantProjects;
+            this.renderProjects();
         });
-    };
-    ProjectList.prototype.renderProjects = function () {
-        var listEl = document.getElementById(this.type + "-projects-list");
-        listEl.innerHTML = '';
-        this.assignedProjects.forEach(function (project) {
-            var liEl = document.createElement('li');
-            liEl.textContent = project.description;
-            listEl.appendChild(liEl);
-        });
-    };
-    ProjectList.prototype.renderContent = function () {
-        this.element.querySelector('h2').textContent = this.type.toUpperCase() + " PROJECTS";
-        var ulElement = this.element.querySelector('ul');
-        ulElement.id = this.type + "-projects-list";
-        var liTemplateElement = document.getElementById('single-project');
-        this.assignedProjects.forEach(function (project) {
-            var importedNode = document.importNode(liTemplateElement.content, true);
-            var liElement = importedNode.firstElementChild;
-            liElement.textContent = project.description;
-            ulElement.insertAdjacentElement('afterbegin', liElement);
-        });
-    };
-    return ProjectList;
-}(ProjectElement));
-var ProjectInput = /** @class */ (function (_super) {
-    __extends(ProjectInput, _super);
-    function ProjectInput() {
-        var _this = _super.call(this, 'project-input', 'app', true, 'user-input') || this;
-        _this.title = _this.element.querySelector('#title');
-        _this.description = _this.element.querySelector('#description');
-        _this.people = _this.element.querySelector('#people');
-        _this.configure();
-        return _this;
+        this.element.addEventListener('dragover', this.dragOverHandler.bind(this));
+        this.element.addEventListener('dragleave', this.dragLeaveHandler.bind(this));
+        this.element.addEventListener('drop', this.dropHandler.bind(this));
     }
-    ProjectInput.prototype.configure = function () {
+    dragOverHandler(event) {
+        event.preventDefault();
+        this.element.querySelector('ul').classList.add('droppable');
+    }
+    dragLeaveHandler() {
+        this.element.querySelector('ul').classList.remove('droppable');
+    }
+    dropHandler(event) {
+        var _a;
+        const id = (_a = event.dataTransfer) === null || _a === void 0 ? void 0 : _a.getData('text/plain');
+        console.log(this.type);
+        store.moveProject(id, this.type === 'active'
+            ? ProjectStatus.activeProjects
+            : ProjectStatus.finishedProjects);
+        this.element.querySelector('ul').classList.remove('droppable');
+    }
+    renderProjects() {
+        const listEl = document.getElementById(`${this.type}-projects-list`);
+        listEl.innerHTML = '';
+        this.assignedProjects.forEach(project => {
+            new ProjectItem(`${this.type}-projects-list`, project);
+        });
+    }
+    renderContent() {
+        this.element.querySelector('h2').textContent = `${this.type.toUpperCase()} PROJECTS`;
+        const ulElement = this.element.querySelector('ul');
+        ulElement.id = `${this.type}-projects-list`;
+        this.assignedProjects.forEach(project => {
+            new ProjectItem(`${this.type}-projects-list`, project);
+        });
+    }
+}
+class ProjectInput extends ProjectElement {
+    constructor() {
+        super('project-input', 'app', true, 'user-input');
+        this.title = this.element.querySelector('#title');
+        this.description = this.element.querySelector('#description');
+        this.people = this.element.querySelector('#people');
+        this.configure();
+    }
+    configure() {
         this.element.addEventListener('submit', this.submitHandler.bind(this));
-    };
-    ProjectInput.prototype.gatherUserInput = function () {
-        var titleValue = this.title.value;
-        var descriptionValue = this.description.value;
-        var peopleValue = this.people.value;
-        var titleValidatable = {
+    }
+    gatherUserInput() {
+        const titleValue = this.title.value;
+        const descriptionValue = this.description.value;
+        const peopleValue = this.people.value;
+        const titleValidatable = {
             value: titleValue,
             minLength: 5,
             maxLength: 255,
         };
-        var descriptionValidatable = {
+        const descriptionValidatable = {
             value: descriptionValue,
             minLength: 5,
             maxLength: 255,
         };
-        var peopleValidatable = {
+        const peopleValidatable = {
             value: peopleValue,
             min: 1,
             max: 10,
@@ -172,24 +192,23 @@ var ProjectInput = /** @class */ (function (_super) {
         else {
             return [titleValue, descriptionValue, +peopleValue];
         }
-    };
-    ProjectInput.prototype.clearInput = function () {
+    }
+    clearInput() {
         this.title.value = '';
         this.description.value = '';
         this.people.value = '';
-    };
-    ProjectInput.prototype.submitHandler = function (e) {
+    }
+    submitHandler(e) {
         e.preventDefault();
-        var res = this.gatherUserInput();
+        const res = this.gatherUserInput();
         if (res) {
-            var title = res[0], description = res[1], people = res[2];
+            const [title, description, people] = res;
             store.addProject(title, description, people);
             this.clearInput();
         }
-    };
-    return ProjectInput;
-}(ProjectElement));
-var projectInput = new ProjectInput();
-var activeProjects = new ProjectList('active');
-var finishedProjects = new ProjectList('finished');
+    }
+}
+const projectInput = new ProjectInput();
+const activeProjects = new ProjectList('active');
+const finishedProjects = new ProjectList('finished');
 //# sourceMappingURL=app.js.map
